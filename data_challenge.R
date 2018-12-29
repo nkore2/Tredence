@@ -108,8 +108,8 @@ result <- function(x)
   } else {
     genre_data <- d2[d2$movieId %in% tag_movie_list,]
     genre_data <- genre_data[c("title", "rating")]
-    genre_rating <- aggregate(rating ~ title, genre_data, FUN = mean, na.rm = TRUE)
-    return(genre_rating)
+    genre_rating <- aggregate(rating ~ title, genre_data, FUN = mean, na.rm = TRUE) # Movie level ratings
+    return(mean(genre_data$rating)) # Genre level rating
   }
 }
 
@@ -128,17 +128,18 @@ tag_list <- c("drama", "romance")
 tag_movie_list <- mlist(tag_list)
 result(tag_movie_list)
 
-# NOTE: Tag matching has been don ein terms of equality, not as a 'contains' 
+# VERY IMP
+# NOTE: Tag matching has been done in terms of equality, not as a 'contains' 
 #       eg: when the tag input is 'drama', movies with 'courtroom drama' have not been selected
 #       But, the function will work in the 'contains' scenario as well
 
-# NOTE: Both the functions can be integrated into one but the ida remains the same
+# NOTE: Both the functions can be integrated into one but the idea remains the same
 
 
 ## ************************************************************************************************************
 # 4.    Number of customers who rated a movie tagged as "horror" by year
 
-tags_in_question <- c("horror", "drama")
+# tags_in_question <- c("horror", "drama")
 tags_in_question <- c("horror")
 movie_list <- unlist(unique(tags[tags$tag %in% tags_in_question,]$movieId))
 
@@ -259,10 +260,14 @@ ans_temp$rank_top5 <- as.character(ans_temp$rank_top5)
 ggplot(ans_temp,aes(x = release_dt,y = num_ratings, fill=rank_top5)) + 
   geom_bar(stat="identity", position = "dodge") +
   theme(plot.title = element_text(hjust = 0.5)) +
+  # geom_text(aes(label=title), position=position_dodge(width=1), vjust=-0.25, angle=-90) +
   xlab("Year")+ylab("No. of ratings / reviews") + ggtitle("Top 5 most reviewed movies every year after 1994")
 
 
-
-
-
-
+# VERY IMP
+# NOTE: 1) The rankings go from 1 to 7 (not 1 to 5) because year 2016 and 2018 have more than 1 movie with the 
+#          same number of reviews
+#       2) This chart does not show the movie names. They can be sbown by uncommenting the geom_text() line in
+#          the above code. This is not recommended as the plot becomes too cluttered and unreadable. This issue
+#          can be resolved by displaying the movie name when you hover over a bar using the mouse. This cannot
+#          be done in ggplot, but can be done using the plotly library
