@@ -16,22 +16,31 @@
 	
 -- Using the below given convoluted method of getting to the answer (which uses group by to get unique values) because it will work faster than a 'count(distinct ugc_id)',
 -- as the ugc_id is not aprtitioned on. But for a small dataset, count(distinct ugc_id) will be best
-select Count_35, (100.0*Count_35/Total_count) as perc_count
-from
-(
-	select
-	Total_count =  	(select count(*) from   (select ugc_id		-- Getting unique customer IDs that satisfy all the conditions
-											from Order_Table
-											where (visit_date between cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date)
-													and cast(to_date(from_unixtime(unix_timestamp('31-01-2018', 'dd-MM-yyyy'))) as date)) 
-											and channel = 'DOTCOM' and service_id in (8, 11) group by 1) as A),
 
-	Count_35 =  	(select count(*) from   (select ugc_id		-- Getting unique customer IDs that satisfy the amount condition as well
-											from Order_Table
-											where (visit_date between cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date)
-													and cast(to_date(from_unixtime(unix_timestamp('31-01-2018', 'dd-MM-yyyy'))) as date)) 
-											and channel = 'DOTCOM' and service_id in (8, 11) and amount>35 group by 1) as B)
-) as C
+
+WITH order_data 
+as (SELECT 
+	ugc_id, 
+	group_order_nbr, 
+	Sum(amount) as amount
+	FROM   dbo.transactions 
+	WHERE  (visit_date between cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date)
+			 and cast(to_date(from_unixtime(unix_timestamp('31-01-2018', 'dd-MM-yyyy'))) as date))
+	and channel = 'DOTCOM' 
+	and service_id IN ( 8, 11 ) 
+	GROUP  BY ugc_id, group_order_nbr), 
+cust_data 
+as (SELECT ugc_id, 
+			CASE 
+			  WHEN Max(amount) <= 35 THEN 1 
+			  ELSE 0 
+			END as flag_35 
+	FROM   order_data 
+	GROUP  BY ugc_id) 
+SELECT Sum(flag_35) as Count_35, 
+       Sum(flag_35) * 100 / Count(ugc_id) as pre_35
+FROM   cust_data 
+
 
 
 /*	
@@ -44,12 +53,12 @@ A.*,
 sum(mth_revenue) over (partition by channel order by dt_mth rows between unbounded preceding an and current row) as channel_cumulative_revenue
 from
 (
-	select channel, TRUNC(visit_date,'MM') as dt_mth, sum(amount) as mth_revenue
+	select channel, TRUNC(visit_date,'MM') as dt_mth, sum(amount) as mth_revenue					-- The TRUNC() function gives the month start date for the input
 	from Order_Table
 	where channel in ('DOTCOM', 'OG')
 	and visit_date between cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date)
 	and cast(to_date(from_unixtime(unix_timestamp('31-01-2018', 'dd-MM-yyyy'))) as date)
-	group by 1,2
+	group by channel,dt_mth
 	
 ) as A
 
@@ -69,10 +78,10 @@ from
 	select
 	ugc_id,
 	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q1,
-	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q2,
-	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q3,
-	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q4,
-	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y2Q1
+	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-05-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q2,
+	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-08-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q3,
+	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-11-2017', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y1Q4,
+	max(case when fy_qtr_strt_dt = cast(to_date(from_unixtime(unix_timestamp('01-02-2018', 'dd-MM-yyyy'))) as date) then 1 else 0 end) as Y2Q1
 	from
 	(
 		-- The output of this inner query is a indicator for each quarter when a customer has ordered
@@ -81,14 +90,14 @@ from
 		-- Level of data is Customer ID, Quarter
 		select 
 			ugc_id, 
-			add_months(add_months(add_months(TRUNC(visit_date,'MM'),-1),-(month(dt)-1)%3),1) as fy_qtr_strt_dt, 
+			add_months(add_months(add_months(TRUNC(visit_date,'MM'),-1),-(month(visit_date)-1)%3),1) as fy_qtr_strt_dt, 
 			1 as order_flag
 		
 		from Order_Table
 		where channel = 'DOTCOM'
 		and visit_date between cast(to_date(from_unixtime(unix_timestamp('01-02-2017', 'dd-MM-yyyy'))) as date)
 		and cast(to_date(from_unixtime(unix_timestamp('30-04-2018', 'dd-MM-yyyy'))) as date)
-		group by 1,2,3
+		group by ugc_id,fy_qtr_strt_dt,order_flag
 	) qtr_order_data
 	group by 1
 ) qtr_perc_repeaters

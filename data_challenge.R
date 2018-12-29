@@ -1,5 +1,6 @@
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(ggplot2)
 
 setwd('C:/Users/nachi/OneDrive/Desktop/Tredence')
@@ -30,6 +31,10 @@ d2$title <- as.character(d2$title)
 d2$genres <- as.character(d2$genres)
 # d2$tag <- as.character(d2$tag)
 d2$release_dt <- as.integer(substr(d2$title, nchar(d2$title)-4, nchar(d2$title)-1))
+
+# NOTE:
+# Some of the movies do not have the release year mentioned against their name.
+# Since there are very few of them, they have been ignored in the following analysis.
 
 
 ###################################################################################################################
@@ -153,17 +158,46 @@ temp_df <- NULL
 # 1.  Trend of movie genres by the release years i.e. frequency of different genres of movies released each year. 
 #     If a movie is across multiple genres then count them in all
 
-library(splitstackshape)
+# library(splitstackshape)
+# 
+# transpose_fn <- function(x)
+# {
+#   
+#   temp <- x[c("movieId","genres")]
+#   temp_wide <- cSplit(temp, "genres", sep="|")
+#   temp_long <- melt(temp_wide, id.vars = c("movieId"))
+#   temp_long <- temp_long[!is.na(temp_long$value),]
+#   temp_long$variable <- NULL
+#   
+#   # Add back movie title info
+#   x <- merge(x, temp_long, by="movieId", all.x = TRUE)
+#   x$genres <- as.character(x$genres)
+#   x$title <- as.character(x$title)
+#   x$genres <- NULL
+#   names(x)[3] <- "genres"
+#   return(x)
+#   
+# }
 
+
+library(reshape2)
 transpose_fn <- function(x)
 {
-  
-  temp <- x[c("movieId","genres")]
-  temp_wide <- cSplit(temp, "genres", sep="|")
+  temp <- movies[c("movieId","genres")]
+  temp$genres <- as.character(temp$genres)
+  abc <- strsplit(temp$genres,"|", fixed = TRUE)
+  abc <- as.data.frame(str_split_fixed(abc,' ', 20))
+  abc <- abc[, colSums(abc != "") != 0]
+  abc <- as.data.frame(lapply(abc, gsub, pattern="c\\(", replacement=''))
+  abc <- as.data.frame(lapply(abc, gsub, pattern='[() ",]', replacement=''))
+  abc <- as.data.frame(apply(abc, 2, function(x) gsub("^$|^ $", NA, x)))
+  abc[] <- lapply(abc, function(x) if(is.factor(x)) as.character(x) else x)
+  temp_wide <- cbind(temp,abc)
+  temp_wide$genres <- NULL
   temp_long <- melt(temp_wide, id.vars = c("movieId"))
   temp_long <- temp_long[!is.na(temp_long$value),]
   temp_long$variable <- NULL
-  
+
   # Add back movie title info
   x <- merge(x, temp_long, by="movieId", all.x = TRUE)
   x$genres <- as.character(x$genres)
@@ -173,6 +207,7 @@ transpose_fn <- function(x)
   return(x)
   
 }
+
 
 # Create data for plotting
 df <- transpose_fn(movies)
@@ -187,12 +222,12 @@ library(ggplot2)
 zzz <- df_plot[df_plot$year>2013,]
 ggplot(zzz,aes(x = year,y = movieId, fill=genres)) + 
   geom_bar(stat="identity", position = "dodge") +
-  xlab("Year")+ylab("Frequency")
+  xlab("Year")+ylab("Frequency") + ggtitle("Frequency plot for last few years")
 
 # Plot for the entire data
 ggplot(df_plot,aes(x = year,y = movieId, fill=genres)) + 
   geom_bar(stat="identity", position = "dodge") +
-  xlab("Year")+ylab("Frequency")
+  xlab("Year")+ylab("Frequency") + ggtitle("Frequency plot for all the years \n(need to convert to line plot)")
 
 ## --> A bar graph is not the best way to visualize the trend. Using a line graph below
 ggplot(df_plot, aes(year, movieId, group = genres, colour = genres)) + 
@@ -225,5 +260,9 @@ ggplot(ans_temp,aes(x = release_dt,y = num_ratings, fill=rank_top5)) +
   geom_bar(stat="identity", position = "dodge") +
   theme(plot.title = element_text(hjust = 0.5)) +
   xlab("Year")+ylab("No. of ratings / reviews") + ggtitle("Top 5 most reviewed movies every year after 1994")
+
+
+
+
 
 
