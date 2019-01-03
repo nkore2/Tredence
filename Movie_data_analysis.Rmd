@@ -1,9 +1,28 @@
+---
+title: "Movie Data Analysis"
+author: "Nachiket Kore"
+date: "January 2, 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Movie data analysis
+
+```{r warning = FALSE}
 library(dplyr)
 library(tidyr)
 library(stringr)
 library(ggplot2)
 
 setwd('C:/Users/nachi/OneDrive/Desktop/Tredence')
+
 
 #Read csv file
 links = read.csv('links.csv', header = TRUE, fill = TRUE)
@@ -29,24 +48,21 @@ d2 <- merge(d1, ratings, by.x = "movieId", by.y = "movieId", all.x = TRUE)
 # --> d1 is at Movie level
 # --> d2 is at Movie,user level
 
+
 # Typecasting
 d2$title <- as.character(d2$title)
 d2$genres <- as.character(d2$genres)
 # d2$tag <- as.character(d2$tag)
 d2$release_dt <- as.integer(substr(d2$title, nchar(d2$title)-4, nchar(d2$title)-1))
 
-# NOTE:
-# Some of the movies do not have the release year mentioned against their name.
-# Since there are very few of them, they have been ignored in the following analysis.
 
+```
+##### NOTE:
+##### Some of the movies do not have the release year mentioned against their name. Since there are very few of them, they have been ignored in the following analysis.
 
-###################################################################################################################
-                                                ## Data wrangling
-###################################################################################################################
-
-## ************************************************************************************************************
-## 1.    Average rating for each movie released in or after 1996
-
+### Data wrangling
+#### 1.    Average rating for each movie released in or after 1996
+```{r warning = FALSE}
 m1996 <- d2[d2$release_dt >= 1996,]
 # Keeping necessary columns
 m1996 <- m1996[c("title", "rating")]        # Filtering by name in this situation. Mostly done by index
@@ -54,11 +70,13 @@ m1996_ratings <- aggregate(m1996, by = list(m1996$title), FUN = mean, na.rm = TR
 
 # Clearing memory space allocated to temporary variables
 m1996_ratings$title <- NULL
-m1996 <- NULL   
+m1996 <- NULL
 
-## ************************************************************************************************************
-## 2.    Top 5 most reviewed movies every year after 1994
+```
 
+
+#### 2.    Top 5 most reviewed movies every year after 1994
+```{r warning = FALSE}
 r1994 <- d2[(d2$release_dt > 1994 & !is.na(d2$rating)), ]
 # Removing NAs that are intrduced because some movies do not have missing dates
 r1994 <- r1994[!is.na(r1994$release_dt),]
@@ -78,12 +96,13 @@ ans <- ans %>%                                                    # Creating a r
 
 # Clearing memory space allocated to temporary variables
 # r1994_review <- NULL
-r1994 <- NULL   
+r1994 <- NULL 
 
-## ************************************************************************************************************
-## 3.    Average rating for "Drama", "Romance" and "Drama and Romance" movies 
-##       This has been done using tags not genres - Can be done just as easily by genres
+```
 
+
+#### 3.    Average rating for "Drama", "Romance" and "Drama and Romance" movies. This has been done using tags not genres - Can be done just as easily by genres
+```{r warning = FALSE}
 # Function to get the list of movies that match the tag(s)
 mlist <- function(x)
 {
@@ -131,16 +150,15 @@ tag_list <- c("drama", "romance")
 tag_movie_list <- mlist(tag_list)
 result(tag_movie_list)
 
-# VERY IMP
-# NOTE: Tag matching has been done in terms of equality, not as a 'contains' 
-#       eg: when the tag input is 'drama', movies with 'courtroom drama' have not been selected
-#       But, the function can be easily modified for the 'contains' scenario as well
+```
+##### VERY IMP
+##### NOTE: Tag matching has been done in terms of equality, not as a 'contains' eg: when the tag input is 'drama', movies with 'courtroom drama' have not been selected. But, the function can be easily modified for the 'contains' scenario as well.
 
-# NOTE: Both the functions can be integrated into one but the idea remains the same
+##### NOTE: Both the functions can be integrated into one but the idea remains the same
+<br>
 
-
-## ************************************************************************************************************
-# 4.    Number of customers who rated a movie tagged as "horror" by year
+#### 4.    Number of customers who rated a movie tagged as "horror" by year
+```{r warning = FALSE}
 
 # tags_in_question <- c("horror", "drama")
 tags_in_question <- c("horror")
@@ -153,15 +171,12 @@ print(yearly_users)
 
 temp_df <- NULL
 
+```
+<br><br>
 
-###################################################################################################################
-                                                  ## Data plotting
-###################################################################################################################
-
-## ************************************************************************************************************
-# 1.  Trend of movie genres by the release years i.e. frequency of different genres of movies released each year. 
-#     If a movie is across multiple genres then count them in all
-
+## Data plotting
+#### 1.  Trend of movie genres by the release years i.e. frequency of different genres of movies released each year. If a movie is across multiple genres then count them in all
+```{r warning = FALSE}
 # Using the splitstackshape package
 # library(splitstackshape)
 
@@ -239,9 +254,11 @@ ggplot(df_plot, aes(year, movieId, group = genres, colour = genres)) +
   geom_line(size = 1) + theme_bw() + 
   xlab("Year")+ylab("Frequency") + ggtitle("Frequency of movie genres across time")
 
-## ************************************************************************************************************
-# 2.  Is there a shift in trend?
+```
 
+
+#### 2.  Is there a shift in trend?
+```{r warning = FALSE}
 ## --> Yes there is
 ggplot(df_plot, aes(year, movieId, group = genres, colour = genres)) + 
   geom_line(size = 1) + theme_bw() + 
@@ -254,11 +271,12 @@ ggplot(df_plot, aes(year, movieId, group = genres, colour = genres)) +
              The upward trend peaks at 2002 and then starts to fall down again (but it might be due to incomplete data)."
        , face="bold", size=5)
 
+```
 
 
-## ************************************************************************************************************
-# 3.  Top 5 most reviewed movies every year after 1994 - would like to see all the years plotted at one go
 
+#### 3.  Top 5 most reviewed movies every year after 1994 - would like to see all the years plotted at one go
+```{r warning = FALSE}
 head(ans)
 ans_temp <- ans
 ans_temp$rank_top5 <- as.character(ans_temp$rank_top5)
@@ -269,23 +287,18 @@ ggplot(ans_temp,aes(x = release_dt,y = num_ratings, fill=rank_top5)) +
   # geom_text(aes(label=title), position=position_dodge(width=1), vjust=-0.25, angle=-90) +
   xlab("Year")+ylab("No. of ratings / reviews") + ggtitle("Top 5 most reviewed movies every year after 1994")
 
+```
+##### VERY IMP
 
-# VERY IMP
-# NOTE: 1) The rankings go from 1 to 7 (not 1 to 5) because year 2016 and 2018 have more than 1 movie with the 
-#          same number of reviews
-#       2) This chart does not show the movie names. They can be sbown by uncommenting the geom_text() line in
-#          the above code. This is not recommended as the plot becomes too cluttered and unreadable. This issue
-#          can be resolved by displaying the movie name when you hover over a bar using the mouse. This cannot
-#          be done in ggplot, but can be done using the plotly library
+##### NOTE: 1) The rankings go from 1 to 7 (not 1 to 5) because year 2016 and 2018 have more than 1 movie with the same number of reviews
 
+#####       2) This chart does not show the movie names. They can be sbown by uncommenting the geom_text() line in the above code. This is not recommended as the plot becomes too cluttered and unreadable. This issue can be resolved by displaying the movie name when you hover over a bar using the mouse. This cannot be done in ggplot, but can be done using the plotly library
 
-## ************************************************************************************************************
-## ************************************************************************************************************
-                                    # What else can you do with the data?
+<br>
 
-
-# 4.  What was the golden age of cinema? 
-#     i.e. Comparing movie trends (number of movies) across years and Average rating of movies across time
+### What else can you do with the data?
+#### 4.  What was the golden age of cinema? - i.e. Comparing movie trends (number of movies) across years and Average rating of movies across time
+```{r warning = FALSE}
 
 library(gtable)
 library(grid)
@@ -343,13 +356,14 @@ g <- gtable_add_grob(g1, g2$grobs[[which(g2$layout$name == "panel")]], pp$t, pp$
 # Drawing
 grid.draw(g)
 
-# NOTE: The convoluted method of combining graphs has to be done because the scales of both 
-#       the metrics are not comparable. If they are comparable, then you can just use two 
-#       geom_line() commands in the same plot
+# <Just an extra line>
+```
+##### NOTE: The convoluted method of combining graphs has to be done because the scales of both the metrics are not comparable. If they are comparable, then you can just use two geom_line() commands in the same plot
 
+<br>
 
-## ************************************************************************************************************
-# 5.  Which genres are the best (in terms of ratings)?
+#### 5.  Which genres are the best (in terms of ratings)?
+```{r warning = FALSE}
 mov_ratings <- aggregate(rating ~ title, data = d2, FUN = mean, na.rm = TRUE)
 df_temp <- merge(df, mov_ratings, by.x = "title", by.y = "title", all.x = TRUE)
 df_temp <- df_temp[(!is.na(df_temp$rating) & !is.na(df_temp$year)), ]
@@ -379,9 +393,10 @@ ggplot(temp,aes(x = year,y = rating, group = Id, fill=genres)) +
   theme(plot.title = element_text(hjust = 0.5),
         plot.caption = element_text(hjust = 0))
 
+```
 
-## ************************************************************************************************************
-# 6. Most Frequently occuring tags
+#### 6. Most Frequently occuring tags
+```{r warning = FALSE}
 tag_freq <- aggregate(userId ~ tag, data = tags, FUN = length)
 names(tag_freq)[2] <- "Tag_Freq"
 temp <- tag_freq %>% top_n(n = 10, wt = Tag_Freq)
@@ -393,3 +408,6 @@ ggplot(temp,aes(x = reorder(tag, -Tag_Freq),y = Tag_Freq)) +
         axis.title.x = element_text(face="bold"),
         axis.text.x = element_text(angle = 90),
         axis.title.y = element_text(face="bold"))
+
+```
+
